@@ -1,0 +1,1037 @@
+!==================================================
+!============ Problem description =================
+!==================================================
+August 2004 until end 2015 spin up with downscaled MeteoSuisse raster data (daily P and T)
+Monthly daily average PET (Turc formula)
+New mesh with streamflow and piezos embedded. 
+still simple geom for quaternary. 
+end title
+!==================================================
+!================ Grid generation =================
+!==================================================
+
+read algomesh 2d grid
+g4a.ah2
+
+Generate layers interactive
+
+  base elevation
+    elevation constant
+	450
+  end
+  
+  new layer
+    layer name
+        lower
+      	elevation from raster file
+	alti3d_merged.asc
+	proportional sublayering
+		25
+		0.5
+		0.5
+		0.5
+		0.5
+		0.5
+		1
+		1
+		1
+		1
+		1
+		1
+		1
+		1
+		1
+		1
+		1
+		1
+		1
+		1
+		1
+		2
+		2
+		2
+		2
+		2
+	offset top
+	-10
+	end
+
+	new layer
+    layer name
+        middle
+      	elevation from raster file
+	alti3d_merged.asc
+	Uniform sublayering
+		10
+	offset top
+	-0.45
+	end
+	
+	new layer
+    layer name
+        upper
+      	elevation from raster file
+	alti3d_merged.asc
+	Uniform sublayering
+		5
+		end
+  
+
+end ! generate layers interactive
+write faces and segments
+end grid generation
+
+mesh to tecplot
+g4a.dat 
+
+echo coordinates 
+echo incidences
+
+skip on
+read 3d grid
+end grid generation
+skip off
+
+!=======================================
+!==== General simulation parameters ====
+!=======================================
+finite difference mode
+unsaturated
+transient flow
+!travel time PDF
+!mean age
+dual nodes for surface flow
+units: kilogram-metre-day
+no nodal flow check
+!data check only
+!impermeable matrix
+
+!remove negative coefficients
+
+!compute underrelaxation factor
+!underrelaxation factor
+!0.1
+
+quasi steady groundwater flow
+integrated finite difference for overland flow
+
+!upstream weighting factor
+!0.75
+!0.5
+
+!==================================================
+!================= Surface ========================
+!==================================================
+
+use domain type
+surface
+
+properties file
+MaterialProperties\surface_full_map.oprops
+
+clear chosen faces
+choose faces top
+new zone 
+1
+
+read overland zones from raster, dominant class
+	MaterialProperties\land_cover_zones_merged_no_explicit_stream.asc
+	
+write zones to file
+surface_element_numbers_by_zone.txt
+
+clear chosen zones
+choose zone number
+1
+read properties
+grass
+
+clear chosen zones
+choose zone number
+2
+read properties
+bedrock 
+!low roughness and rill storage height
+
+clear chosen zones
+choose zone number
+3
+read properties
+glacier 
+!low roughness and rill storage height, high densitiy and different melt factor / density. 
+
+clear chosen zones
+choose zone number
+4
+read properties
+unconsolidated_rock 
+! high roughness and rill storage height, similar to similar to ustreambed. Note these all need to be set still!!
+ 
+clear chosen zones
+choose zone number
+5
+read properties
+bushes 
+!higher roughness and rill storage height than pasture, not sure about snow param.
+
+clear chosen zones
+choose zone number
+6
+read properties
+forest 
+!higher roughness and rill storage height than bushes, not sure about snow param
+
+clear chosen zones
+
+!--initial conditions
+choose nodes all
+
+initial water depth
+0.0001
+
+!initial head from output file
+!	Initial/ini_olf.0892
+!Initial/ini_olf.1056
+!Initial/ini_olf.1359
+!Initial/ini_olf.1432
+!Initial/ini_olf.3928
+!Initial/ini_olf.0033
+
+clear chosen nodes
+choose nodes top gb
+	ChosenNodes\critical_depth_near_stream.nchos
+	
+write chosen nodes
+	critical_depth_near_stream_node_numbers.txt
+	
+write chosen nodes xyz
+	critical_depth_near_stream_chosen_nodes_xyz.txt
+
+create segment set
+critical_depth_near_stream
+
+boundary condition
+	type
+	critical depth
+
+	name
+	critical_depth_near_stream
+
+	segment set
+	critical_depth_near_stream
+	
+tecplot output
+
+end ! new critical depth boundary
+
+
+clear chosen nodes
+choose nodes top gb
+	ChosenNodes\critical_depth_elsewhere.nchos
+	
+write chosen nodes
+	critical_depth_elsewhere_node_numbers.txt
+	
+write chosen nodes xyz
+	critical_depth_elsewhere_chosen_nodes_xyz.txt
+
+create segment set
+critical_depth_elsewhere
+
+boundary condition
+	type
+	critical depth
+
+	name
+	critical_depth_elsewhere
+
+	segment set
+	critical_depth_elsewhere
+	
+tecplot output
+
+end ! new critical depth boundary
+
+clear chosen zones
+clear chosen nodes
+clear chosen elements
+
+clear chosen nodes
+choose nodes top
+
+create face set
+	top
+
+write chosen faces                  
+	top_faces
+	
+boundary condition
+type
+  rain and snowmelt
+	name
+	rainfall_and_snow
+
+face set
+   top
+
+time raster table 
+include meteo_suisse_daily_temp_precip.2004_2015_25m
+end
+tecplot output
+end
+
+boundary condition
+type
+	potential evapotranspiration
+face set
+	top
+
+time raster table
+include meteo_suisse_monthly_pet_turc.2004_2015_25m
+end
+tecplot output
+!output et details
+
+end
+
+!--hydrographs
+
+clear chosen nodes
+choose nodes top gb
+	ChosenNodes\S1.nchos
+ 
+set hydrograph nodes
+S1_Avancon_Nant_Upper
+
+clear chosen nodes
+choose nodes top gb
+	ChosenNodes\S2.nchos
+ 
+set hydrograph nodes
+S2_Avancon_Nant_Weir
+
+clear chosen nodes
+choose nodes top gb
+	ChosenNodes\S3.nchos
+ 
+set hydrograph nodes
+S3_Le_Richard
+
+clear chosen nodes
+
+!--------------------------  et properties
+
+use domain type
+et
+
+properties file
+MaterialProperties\nant.etprops
+
+!assign zone zero
+
+clear chosen elements
+clear chosen zones
+choose elements list
+	Elements_Surface_Zone1.txt
+choose faces top for chosen elements
+new zone
+1
+clear chosen zones
+choose zone number
+1
+read properties
+grass
+
+clear chosen elements
+clear chosen zones
+choose elements list
+	Elements_Surface_Zone2.txt
+choose faces top for chosen elements
+new zone
+2
+clear chosen zones
+choose zone number
+2
+read properties
+bedrock
+
+clear chosen elements
+clear chosen zones
+choose elements list
+	Elements_Surface_Zone3.txt
+choose faces top for chosen elements
+new zone
+3
+clear chosen zones
+choose zone number
+3
+read properties
+glacier
+
+clear chosen elements
+clear chosen zones
+choose elements list
+	Elements_Surface_Zone4.txt
+choose faces top for chosen elements
+new zone
+4
+clear chosen zones
+choose zone number
+4
+read properties
+unconsolidated_rock 
+
+clear chosen elements
+clear chosen zones
+choose elements list
+	Elements_Surface_Zone5.txt
+choose faces top for chosen elements
+new zone
+5
+clear chosen zones
+choose zone number
+5
+read properties
+bushes
+
+clear chosen elements
+clear chosen zones
+choose elements list
+	Elements_Surface_Zone6.txt
+choose faces top for chosen elements
+new zone
+6
+clear chosen zones
+choose zone number
+6
+read properties
+forest
+
+
+skip on
+
+clear chosen faces
+choose faces top
+new zone 
+1
+
+read zones from file
+	surface_elements_by_zone.txt
+
+clear chosen zones
+choose zone number
+1
+read properties
+grass
+
+clear chosen zones
+choose zone number
+2
+read properties
+bedrock 
+
+clear chosen zones
+choose zone number
+3
+read properties
+glacier 
+
+clear chosen zones
+choose zone number
+4
+read properties
+unconsolidated_rock 
+ 
+clear chosen zones
+choose zone number
+5
+read properties
+bushes 
+
+clear chosen zones
+choose zone number
+6
+read properties
+forest 
+
+skip off
+
+clear chosen zones
+
+!==================================================
+!============ Subsurface ==========
+!==================================================
+
+Use domain type
+porous media
+
+!assign zone zero
+assign zone zero
+
+!RT
+! found that zone for element 100000 is zero, which causes a grok error
+! change instruction below to have zone 1 for all elements by default
+! and assign for zone 1 properties of material 2_i1i (random choice)
+!RT assign zone zero
+!JMT, this fixed now, so can still use assign zone zero and then start at 2 (nothing in 1). 
+
+!choose zone number
+!1
+!read properties
+!	2_i1i
+!clear chosen zones
+
+clear chosen elements
+choose elements list
+	MaterialProperties\2_i1i.txt
+new zone
+2
+
+clear chosen elements
+choose elements list
+	MaterialProperties\3_i1s.txt
+new zone
+3
+
+clear chosen elements
+choose elements list
+	MaterialProperties\4_i2.txt
+new zone
+4
+
+clear chosen elements
+choose elements list
+	MaterialProperties\5_i3_4.txt
+new zone
+5
+
+clear chosen elements
+choose elements list
+	MaterialProperties\6_i5.txt
+new zone
+6
+
+clear chosen elements
+choose elements list
+	MaterialProperties\7_i6_8.txt
+new zone
+7
+
+clear chosen elements
+choose elements list
+	MaterialProperties\8_i8c2.txt
+new zone
+8
+
+clear chosen elements
+choose elements list
+	MaterialProperties\9_c2k.txt
+new zone
+9
+
+clear chosen elements
+choose elements list
+	MaterialProperties\10_c3.txt
+new zone
+10
+
+clear chosen elements
+choose elements list
+	MaterialProperties\11_c4.txt
+new zone
+11
+
+clear chosen elements
+choose elements list
+	MaterialProperties\12_c4_5.txt
+new zone
+12
+
+clear chosen elements
+choose elements list
+	MaterialProperties\13_c6_8.txt
+new zone
+13
+
+clear chosen elements
+choose elements list
+	MaterialProperties\14_e5.txt
+new zone
+14
+
+clear chosen elements
+choose elements list
+	MaterialProperties\15_e6c.txt
+new zone
+15
+
+clear chosen elements
+choose elements list
+	MaterialProperties\16_e6k.txt
+new zone
+16
+
+clear chosen elements
+choose elements list
+	MaterialProperties\17_e6o1.txt
+new zone
+17
+
+clear chosen elements 
+choose elements list
+	MaterialProperties\18_basement.txt
+new zone
+18
+
+clear chosen elements
+choose elements from arcview ascii thickness map
+	MaterialProperties\quat_key_landforms_30m.asc
+new zone
+19
+
+clear chosen elements
+choose elements from arcview ascii thickness map
+	MaterialProperties\S1.asc
+new zone
+20
+
+clear chosen elements
+choose elements from arcview ascii thickness map
+	MaterialProperties\S3.asc
+new zone
+21
+
+clear chosen elements
+choose elements from arcview ascii thickness map
+	MaterialProperties\S5.asc
+new zone
+22
+
+
+clear chosen elements
+choose elements from arcview ascii thickness map
+	MaterialProperties\S6.asc
+new zone
+23
+
+
+clear chosen elements
+choose elements from arcview ascii thickness map
+	MaterialProperties\S7.asc
+new zone
+24
+
+clear chosen elements
+choose elements from arcview ascii thickness map
+	MaterialProperties\S8.asc
+new zone
+25
+
+clear chosen elements
+choose elements from arcview ascii thickness map
+	MaterialProperties\U1.asc
+new zone
+26
+
+clear chosen elements
+choose elements from arcview ascii thickness map
+	MaterialProperties\U5.asc
+new zone
+27
+
+clear chosen elements
+choose elements from arcview ascii thickness map
+	MaterialProperties\U7.asc
+new zone
+28
+
+clear chosen elements
+choose elements from arcview ascii thickness map
+	MaterialProperties\U8.asc
+new zone
+29
+
+properties file
+	MaterialProperties\subsurface.mprops
+	
+clear chosen zones
+choose zone number
+	2
+read properties
+	2_i1i
+
+clear chosen zones
+choose zone number
+	3
+read properties
+	3_i1s
+
+clear chosen zones
+choose zone number
+	4
+read properties
+	4_i2
+
+clear chosen zones
+choose zone number
+	5
+read properties
+	5_i3_4
+
+clear chosen zones
+choose zone number
+	6
+read properties
+	6_i5
+
+clear chosen zones
+choose zone number
+	7
+read properties
+	7_i6_8
+
+clear chosen zones
+choose zone number
+	8
+read properties
+	8_i8c2
+
+clear chosen zones
+choose zone number
+	9
+read properties
+	9_c2k
+
+clear chosen zones
+choose zone number
+	10
+read properties
+	10_c3
+
+clear chosen zones
+choose zone number
+	11
+read properties
+	11_c4
+
+clear chosen zones
+choose zone number
+	12
+read properties
+	12_c4_5
+
+clear chosen zones
+choose zone number
+	13
+read properties
+	13_c6_8
+
+clear chosen zones
+choose zone number
+	14
+read properties
+	14_e5
+
+clear chosen zones
+choose zone number
+	15
+read properties
+	15_e6c
+
+clear chosen zones
+choose zone number
+	16
+read properties
+	16_e6k
+
+clear chosen zones
+choose zone number
+	17
+read properties
+	17_e6o1
+
+clear chosen zones
+choose zone number
+	18
+read properties
+	18_basement
+	
+clear chosen zones
+choose zone number
+	19
+read properties
+	19_quat
+	
+clear chosen zones
+choose zone number
+	20
+read properties
+	20_S1	
+	
+clear chosen zones
+choose zone number
+	21
+read properties
+	21_S3
+	
+clear chosen zones
+choose zone number
+	22
+read properties
+	22_S5	
+	
+clear chosen zones
+choose zone number
+	23
+read properties
+	23_S6
+
+clear chosen zones
+choose zone number
+	24
+read properties
+	24_S7
+
+clear chosen zones
+choose zone number
+	25
+read properties
+	25_S8
+
+clear chosen zones
+choose zone number
+	26
+read properties
+	26_U1
+
+clear chosen zones
+choose zone number
+	27
+read properties
+	27_U5
+
+clear chosen zones
+choose zone number
+	28
+read properties
+	28_U7	
+	
+clear chosen zones
+choose zone number
+	29
+read properties
+	29_U8	
+	
+!clear chosen zones
+!choose zone number
+!	20
+!read properties
+!	20_soil_silt_loam_homogen
+	
+
+!RT
+!************************
+skip on
+use domain type
+porous media
+
+clear chosen zones
+choose zones all
+
+unsaturated tables
+  pressure-saturation
+     -20.0  1.0
+       0.0  1.0
+  end ! pressure-saturation
+  saturation-relative k
+       0.0  1.0
+       1.0  1.0
+  end ! saturation-relative
+end
+skip off
+!************************	
+
+! ------------ initial conditions (subsurface)
+clear chosen zones
+clear chosen faces
+clear chosen segments
+clear chosen elements
+clear chosen nodes
+
+choose zones all
+choose nodes all
+!map initial head from raster
+!	Initial/initial_water_table_elevation.asc
+
+initial head from output file
+!	Initial/ini_pm.0892
+!Initial/ini_pm.1056
+!Initial/ini_pm.1359
+!Initial/ini_pm.1432
+Initial/ini_pm.3928
+!Initial/ini_pm.0033
+
+clear chosen nodes
+clear chosen zones
+
+!function z initial head
+!	2900,1700
+!	1500,1495		
+!	clear chosen nodes
+
+
+
+!Free-drainage Boundary condition
+skip on
+clear chosen nodes
+clear chosen faces
+clear chosen zones
+
+choose faces bottom
+
+choose faces vertical from gb nodes
+	ChosenNodes\all_boundary_nodes.nchos
+	1,41
+	
+write chosen faces
+	free_drainage_faces.txt
+	
+create face set
+free_drainage_faces
+
+boundary condition
+	type
+	free drainage
+
+	name
+	free_drainage
+
+	face set
+	free_drainage_faces
+	
+
+	
+tecplot output
+end
+
+clear chosen faces
+skip off
+
+
+!=======================================
+!========= SIMULATION CONTROL ==========
+!=======================================
+
+
+Newton maximum iterations
+!RT 20
+!75
+!18
+10
+Jacobian epsilon
+1e-5
+Newton absolute convergence criteria
+1e-20
+Newton residual convergence criteria
+!RT 5e-3
+10.0
+!flow solver convergence criteria
+!1.e-4
+!RT compute underrelaxation factor
+!
+initial timestep
+1E-8
+!
+maximum timestep
+50
+
+!Head control
+!0.5
+
+!RT Water depth control
+!RT 0.1
+Saturation control
+0.05
+!RT 0.025
+
+
+Newton iteration control
+30
+!RT 18
+
+
+!==================================================
+!============= Timestep Controls ==================
+!==================================================
+!restarting from previous point
+initial time
+!892
+!1056
+!1358
+!1430
+0
+
+skip on
+head control
+100
+maximum timestep
+100
+initial timestep
+0.0000001
+maximum timestep multiplier
+5
+minimum timestep multiplier
+0.5
+Minimum timestep
+1d-15
+skip off
+
+
+
+!==================================================
+!================= Output =========================
+!==================================================
+mass balance output general format
+echo flow boundary conditions
+
+k to tecplot
+	k_tecplot.dat
+
+output times
+include output.times
+end
+
+!==================================================
+!======== Piezometers =============
+!==================================================
+
+make node observation point
+N1
+60432
+	
+make node observation point
+N2
+60365
+
+make node observation point
+N3
+60309
+
+make node observation point
+N4
+60239	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
